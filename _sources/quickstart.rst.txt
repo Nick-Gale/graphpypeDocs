@@ -16,6 +16,7 @@ The recipe is composed of several fields each specifying the metadata of a parti
 The `name` and `description` fields are strings and are intended to be shorthand descriptors about the recipe for the end user. These can specified by keyword arguments or they can be built constructively.
 
 .. code-block:: python
+
    namedRecipe = graphpype.pipe.Recipe(name="An empty recipe", description="A fairly useless description")
    emptyRecipe.name = "Another empty recipe"
 
@@ -31,6 +32,7 @@ The `Operator` class itself is quite complicated and defines a lot of informatio
 This method of specifying functions is labourious and can seem an unecessarily verbose way of specifying a simple function call. The advantage provided here is in the reproducibility: `graphpype` allows the correct version to be selected, the parameters to be front-ended (rather than buried or split between multiple scripts), and the whole recipe to be visualised as a graph allowing data dependencies to be exposed. The standardisation also allows for minimal changes to be made while building, debugging, and reproducing other work. Let's specify a simple operator.
 
 .. code-block:: python
+
    import numpy
    import graphpype
 
@@ -50,13 +52,14 @@ This method of specifying functions is labourious and can seem an unecessarily v
 
 This is a simple operator that doesn't require any input arguments or internal hyperparameters and at a glance appears to use the mean function in the `numpy` package to transform the wiring distance of a graph to a simple cost measure. When operated on the version of numpy recorded will be used and any unknown parameters e.g. `axis`. Then, if there was a conflict between recipes on different computers it might be resolved by comparing numpy versions and checking their releases for particular bugs. Also, if someone was reproducing a paper and didn't realise that `axis=1` should be specified the json template would front-end the default specification of `None` which would aid in resolving the conflict.
 
-==============
+============================
 Constructing Example Recipes
-==============
+============================
 
 There are some standard operations that one might want to apply to their analysis pipeline. To help building a recipe we offer two methods: the template keyword and a function in the `utils` package.
 
 .. code-block:: python
+
    import graphpype
    recipeStandard = graphpype.pipe.Recipe(template="standard")
    graphpype.utils.generateTemplate(name="generic", exampleFile="generic.py")
@@ -65,20 +68,22 @@ There are some standard operations that one might want to apply to their analysi
 The first method reads out from templates that are bundled within the graphpype package. The second method allows for a more abritary specification that immediately writes the recipe specified in a python script. Finally, the Recipe class provides a method `read` which accepts a directory from which a '.json' file may be read from. Once we are happy with our recipe we may write it to disk using the `write` method.
 
 .. code-block:: python
+
    recipeStandard.write("path/to/recipe.json")
 
 The resulting file now defines a portable recipe template. We might also like to get an idea of what our recipe actually does. A useful visualisation of the recipe is given by `generateFlowchart` in the `utils` package which will generate a visualation of the graph defining the recipe. There are default colours provided for each level of the analysis but these can be specified as a dictionary of named colours for customisation. If the data paths are known we can specify their name and paths as dictionary key values and graphpype provides the `report` method which will write a report as a html file summarising the data and operator chain. We have a data directory with two BIDS formatted subdirectory which we will label as "A" and "B". Let's generate a report card and a flowchart for this recipe and dataset.
 
 .. code-block:: python
+   
    import graphpype
    recipeStandard = graphpype.pipe.Recipe(template="standard")
    recipeStandard.write("ourNewExample")
    plotObj = graphpype.utils.generateFlowchart(recipeStandard)
    plotObj.show()
-   bidsDir = {"A": "data/splitA", "B": "data/splitB"} 
-   recipeStandard.report(recipe, bidsDir, outputDir="./data/derivatives/", author="Your Name")
+   bidsDict = {"A": "data/splitA", "B": "data/splitB"} 
+   recipeStandard.report(recipe, bidsDict, outputDir="./data/derivatives/", author="Your Name")
 
-For some more examples of recipe templates refer to the Examples page in the documenation.
+For some more examples of recipe templates refer to the Examples page in the documentation.
 
 =========
 Pipelines
@@ -86,7 +91,10 @@ Pipelines
 
 A recipe is a generic graph specifying the transformations of data and datasets toward a final result. A pipeline is the application of a recipe to a specific dataset or set of datasets. The `Pipeline` class is provided to construct and process analysis pipelines on a particular compute environment. There is an internal representation of data that the `Pipeline` class handles in the form of the `Datum` and `Dataset` classes.
 
-???? code block initialising 
+.. code-block:: python
+   
+   import graphpype
+   pipe = graphpype.recipe.Pipeline('./ourNewExample', bids=bidsDict, preprocess=True) 
 
 ==================
 Datum and Datasets
@@ -96,9 +104,7 @@ The `Datum` class is the atomic unit of the data and has three fields: dirs, pre
 
 The `DataSet` class refers to a collection of either atomic units `Datum` or of `DataSets`. The fields are `name`, `data`, and `analysis`. The name field is for specification useful mainly when multiple datasets are used. The data field is simply a list of pointers to Datum objects, or Datasets. The `analysis` field is a dictionary which contains the results of operators which export to the analysis or postAnalysis levels.
 
-For the most part graphpype will automatically generate the Datum and Datasets typically through an operator. It is possible to individually manipulate the data but it is not recommended outside of exploratory analysis. Let's specify the data objects by providing the BIDS directories:
-
-????? code block 
+For the most part graphpype will automatically generate the Datum and Datasets typically through an operator. It is possible to individually manipulate the data but it is not recommended outside of exploratory analysis. We can specify the data objects by providing the BIDS directories.
 
 ===========
 Parallelism
@@ -110,4 +116,28 @@ Parallelism is internally handled in graphpype explicitly over lists of Datum or
 Example
 ==========
 
-Lets crystalise this all in an example.
+Let's now crystalise this in a runnable example with our dataset of A and B. This assumes that you have `graphpype`, the relevant dependencies for fmri analysis, and python packages installed. It also assumes a data folder with the following structure:
+
+    * ./data/
+       - derivatives/
+       - splitA/
+         -derivatives/
+       - splitB/
+         -derivatives/
+
+The following code block pulls a recipe template from the available options, writes the recipe in JSON format to the top level folder of your analysis, generates a HTML report summarising the recipe and a flowchart defining the analysis graph, and finally processes the pipeline of the recipe distributed over the two independent datasets labelled "A" and "B" and found in the "splitA" and "splitB" data directories.
+
+
+.. code-block:: python
+   
+   import graphpype
+
+   recipeStandard = graphpype.pipe.Recipe(template="standard")
+   recipeStandard.write("ourNewExample")
+   plotObj = graphpype.utils.generateFlowchart(recipeStandard)
+   plotObj.show()
+   bidsDict = {"A": "data/splitA", "B": "data/splitB"} 
+   recipeStandard.report(recipe, bidsDict, outputDir="./data/derivatives/", author="Your Name")
+   pipe = graphpype.recipe.Pipeline('./ourNewExample', bids=bidsDict, preprocess=True) 
+   pipe.process()
+
